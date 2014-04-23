@@ -1,42 +1,51 @@
 package Serial;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.util.Enumeration;
-
 import gnu.io.CommPortIdentifier;
 import gnu.io.SerialPort;
 import gnu.io.SerialPortEvent;
 import gnu.io.SerialPortEventListener;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.util.Enumeration;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * @author Jesse Frush
  */
 
-
+/**
+ * this class interacts with serial ports. It is capable of both sending Strings
+ * of data and receiving data events. It is capable of invoking callback methods
+ * to any ISerialListener objects added as listeners to this class. Whenever the
+ * new-line character '\n' is received, it will print the string received as
+ * well as invoking the callback methods.
+ */
 public class SerialConnection implements SerialPortEventListener
 {
 	private static final int TIME_OUT = 2000;
-	
+
 	private final String portName;
 	private final int dataRate;
-	
+
 	//the SerialPort object, which will allow us to manage a connection
 	SerialPort serialPort;
-	
+
 	//the string object which is used for parsing whole lines one character at a time.
 	private String parsedString;
-	
+
 	//A BufferedReader which will be fed by a InputStreamReader converting the bytes into characters
 	private BufferedReader input;
-	
-	// The output stream to the port
+
+	//The output stream to the port
 	private OutputStream output;
-	
-	
+
+	//a list of ISerialListeners which can receive callbacks from this class
+	private List<ISerialListener> listeners;
+
 	/**
 	 * a default constructor which uses Com4 with a 57600 data rate
 	 */
@@ -44,7 +53,7 @@ public class SerialConnection implements SerialPortEventListener
 	{
 		this( "COM4", 57600 );
 	}
-	
+
 	/**
 	 * a constructor which accepts a port name and connection speed
 	 */
@@ -53,43 +62,41 @@ public class SerialConnection implements SerialPortEventListener
 		parsedString = new String();
 		this.portName = portName;
 		this.dataRate = dataRate;
+		this.listeners = new LinkedList<ISerialListener>();
 	}
-	
-	
 
-
-	public void initialize()
+	
+	/**
+	 * attempts to initialize the serial connection by connecting to the
+	 * specified port name and given parameters
+	 */
+	public void init()
 	{
-		// the next line is for Raspberry Pi and 
-		// gets us into the while loop and was suggested here was suggested http://www.raspberrypi.org/phpBB3/viewtopic.php?f=81&t=32186
-		//System.setProperty( "gnu.io.rxtx.SerialPorts", "/dev/ttyACM0" );
-
-		CommPortIdentifier portId = null;
-		Enumeration portEnum = CommPortIdentifier.getPortIdentifiers();
+		CommPortIdentifier selectedPort = null;
+		Enumeration allPorts = CommPortIdentifier.getPortIdentifiers();
 
 		//First, Find an instance of serial port as set in PORT_NAMES.
-		while (portEnum.hasMoreElements())
+		while( allPorts.hasMoreElements() )
 		{
-			CommPortIdentifier currPortId = (CommPortIdentifier) portEnum.nextElement();
-			if (currPortId.getName().equals(portName))
+			CommPortIdentifier current = (CommPortIdentifier) allPorts.nextElement();
+			if( current.getName().equals( portName ) )
 			{
-				portId = currPortId;
+				selectedPort = current;
 				break;
 			}
 		}
-		
+
 		//if unable to find the com port
-		if( portId == null )
+		if( selectedPort == null )
 		{
-			System.out.println( "Could not find COM port." );
+			System.out.println( "Could not connect to COM port. LET ME GUESS, YOU'RE IN THE CPRE LAB?" );
 			return;
 		}
 
-		
 		try
 		{
 			// open serial port, and use class name for the appName.
-			serialPort = (SerialPort) portId.open( this.getClass().getName(), TIME_OUT );
+			serialPort = (SerialPort) selectedPort.open( this.getClass().getName(), TIME_OUT );
 
 			// set port parameters
 			serialPort.setSerialPortParams( dataRate, SerialPort.DATABITS_8, SerialPort.STOPBITS_1, SerialPort.PARITY_NONE );
@@ -122,6 +129,14 @@ public class SerialConnection implements SerialPortEventListener
 	}
 
 	/**
+	 * adds a listener to this class which may recieve callbacks
+	 */
+	public synchronized void addListener( ISerialListener listener )
+	{
+		listeners.add( listener );
+	}
+
+	/**
 	 * Handle an event on the serial port. Read the data and print it.
 	 */
 	public synchronized void serialEvent( SerialPortEvent oEvent )
@@ -132,8 +147,13 @@ public class SerialConnection implements SerialPortEventListener
 			{
 				char inputChar = (char) input.read();
 				if( inputChar == '\n' )
+				//if( inputChar == 0 )
 				{
 					System.out.println( parsedString );
+					for( ISerialListener listener : listeners )
+					{
+						listener.onStringReceived( parsedString );
+					}
 					parsedString = "";
 				}
 				else
@@ -148,57 +168,52 @@ public class SerialConnection implements SerialPortEventListener
 		}
 		// Ignore all the other eventTypes, but you should consider the other ones.
 	}
-	
+
 	/**
 	 * called when data needs to be sent across the serial connection
 	 */
-	public void sendData(String data)
+	public synchronized void sendData( String data )
 	{
 		if( output == null ) return;
 		char[] characters = data.toCharArray();
 
 		try
 		{
-//			for (char c : characters)
-//			{
-//				output.write(c);
-//			}
-//			output.flush();
 			output.write( data.getBytes() );
 			output.flush();
 		}
-		catch (IOException e)
+		catch( IOException e )
 		{
 			e.printStackTrace();
 		}
 	}
 
-	public static void main( String[] args ) throws Exception
-	{
-//		SerialConnection serial = new SerialConnection( "COM6", 57600 );
-		SerialConnection serial = new SerialConnection();
-		serial.initialize();
-		Thread t = new Thread()
-		{
-			public void run()
-			{
-				//the following line will keep this app alive for 1000 seconds,
-				//waiting for events to occur and responding to them (printing incoming messages to console).
-				try
-				{
-					Thread.sleep( 1000000 );
-				}
-				catch( InterruptedException ie )
-				{
-				}
-			}
-		};
-		t.start();
-		System.out.println( "Started" );
-		
-		serial.sendData( "hello thar!\n" );
-		Thread.sleep( 15000 );
-		serial.sendData( "more data!\n" );
-	}
+	//	public static void main( String[] args ) throws Exception
+	//	{
+	////		SerialConnection serial = new SerialConnection( "COM6", 57600 );
+	//		SerialConnection serial = new SerialConnection();
+	//		serial.initialize();
+	//		Thread t = new Thread()
+	//		{
+	//			public void run()
+	//			{
+	//				//the following line will keep this app alive for 1000 seconds,
+	//				//waiting for events to occur and responding to them (printing incoming messages to console).
+	//				try
+	//				{
+	//					Thread.sleep( 1000000 );
+	//				}
+	//				catch( InterruptedException ie )
+	//				{
+	//				}
+	//			}
+	//		};
+	//		t.start();
+	//		System.out.println( "Started" );
+	//		
+	//		serial.sendData( "hello thar!\n" );
+	//		Thread.sleep( 15000 );
+	//		serial.sendData( "more data!\n" );
+	//	}
 
 }

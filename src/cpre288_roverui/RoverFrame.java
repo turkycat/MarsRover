@@ -15,33 +15,72 @@ import javax.swing.ImageIcon;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 
 public class RoverFrame extends JFrame
 {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -586582539665675594L;
+	
 	private RoverStatusPanel status;
-	private RoverSweepPanel sweep;
+	private RoverSweepPanel plotter;
 
 	public RoverFrame()
 	{
 		setSize( 1200, 800 );
 		status = new RoverStatusPanel();
-		sweep = new RoverSweepPanel();
+		plotter = new RoverSweepPanel();
 
 		add( status );
-		add( sweep );
+		add( plotter );
 		setVisible( true );
 	}
 	
 	
+	/**
+	 * invokes the plotter to use new data and instructs the frame to repaint
+	 */
 	public void plotData( int[][] data )
 	{
-		sweep.plotData( data );
+		plotter.plotData( data );
 		repaint();
+	}
+	
+	
+	/**
+	 * called by the custom event thread in GUIMain when a HUD status string has been received
+	 */
+	public void onStatusString( final String data )
+	{
+		SwingUtilities.invokeLater( new Runnable() {
+
+			@Override
+			public void run()
+			{
+				status.processStatusString( data );
+				repaint();
+			}
+			
+		});
+	}
+	
+
+	
+	/**
+	 * called by the custom event thread in GUIMain when a HUD status string has been received
+	 */
+	public void onDataString( final String data )
+	{
+		SwingUtilities.invokeLater( new Runnable() {
+
+			@Override
+			public void run()
+			{
+				plotter.processDataString( data );
+				repaint();
+			}
+			
+		});
 	}
 	
 
@@ -94,21 +133,57 @@ public class RoverFrame extends JFrame
 			{
 				statusItems[i] = new StatusItem( names[i] );
 				add( names[i], statusItems[i] );
-
-//				///for funzies, delete later TODO
-//				if( i % 3 == 0 )
-//				{
-//					statusItems[i].setStatus( RED );
-//				}
-//				else if( i % 2 == 0 )
-//				{
-//					statusItems[i].setStatus( YELLOW );
-//				}
 			}
 
 			//setLayout( innerLayout );
 			setVisible( true );
 		}
+		
+		
+		/**
+		 * sets the status indicators to green or red depending on each bit
+		 * key:
+		 * first character:
+		 * bit		item
+		 * ---------------
+		 * 0	=	left bumper
+		 * 1	=	right bumper
+		 * 2	=	left cliff
+		 * 3	=	front lift cliff
+		 * 4	=	front right cliff
+		 * 5	=	right cliff
+		 * 6	=	left cliff sig
+		 * 7	=	front left cliff sig
+		 * second character:
+		 * bit		item
+		 * ---------------
+		 * 0	=	front right cliff sig
+		 * 1	=	right cliff sig
+		 */
+		public void processStatusString( String status )
+		{
+			if( status == null ) return;
+			if( status.length() < 3 ) return;
+			
+			char[] bytes = status.toCharArray();
+			if( bytes[0] != 's' ) return;
+			
+			//the first character represented by the first 8 bits
+			for( int i = 0; i < 10; ++i )
+			{
+				int j = i / 8;
+				if( ( bytes[j + 1] & ( 1 << i ) ) > 0 )
+				{
+					statusItems[i].setStatus( 2 );
+				}
+				else
+				{
+					statusItems[i].setStatus( 0 );
+				}
+			}
+		}
+		
+		
 
 		private class StatusItem extends JPanel
 		{
@@ -169,7 +244,7 @@ public class RoverFrame extends JFrame
 			font = new Font( "Serif", Font.BOLD, 16 );
 			setSize( 1200, 675 );
 			setBackground( Color.WHITE );
-
+			clearData();
 		}
 		
 		
@@ -177,6 +252,35 @@ public class RoverFrame extends JFrame
 		{
 			if( coords == null || coords.length != 180 || coords[0] == null || coords[0].length != 2 ) throw new IllegalArgumentException();
 			this.coords = coords;
+		}
+		
+		
+		
+		public void clearData()
+		{
+			this.coords = new int[180][2];
+		}
+		
+		
+		/**
+		 * accepts data in the form of a string, for sensors
+		 * @param data
+		 */
+		public void processDataString( String data )
+		{
+			if( data == null ) return;
+			char[] bytes = data.toCharArray();
+			
+			int sensorID = bytes[0];
+			if( !( sensorID == 0 || sensorID == 1 ) ) return;
+			
+			int degree = bytes[1];
+			if( !( degree >= 0 && degree <= 180 ) ) return;
+			
+			int value = bytes[2] | ( bytes[3] << 8 );
+			
+			//if( coords == null ) clearData();
+			coords[ degree ][ sensorID ] = value;
 		}
 		
 
@@ -235,12 +339,16 @@ public class RoverFrame extends JFrame
 			//draw origin
 			g.drawOval( xOrigin - 5, yOrigin - 5, 10, 10 );
 
-			g.drawChars( new char[] { '5', '0', ' ', 'c', 'm' }, 0, 5, 80, 720 );
-			g.drawChars( new char[] { '5', '0', ' ', 'c', 'm' }, 0, 5, 1080, 720 );
-			g.drawChars( new char[] { '2', '5', ' ', 'c', 'm' }, 0, 5, 330, 720 );
-			g.drawChars( new char[] { '2', '5', ' ', 'c', 'm' }, 0, 5, 830, 720 );
+			//draw text
+			char[] characters = "50 cm".toCharArray();
+			g.drawChars( characters, 0, 5, 80, 720 );
+			g.drawChars( characters, 0, 5, 1080, 720 );
+			characters = "25 cm".toCharArray();
+			g.drawChars( characters, 0, 5, 330, 720 );
+			g.drawChars( characters, 0, 5, 830, 720 );
 			
 			
+			//draw current coordinates
 			if( coords != null )
 			{
 				g.setStroke( medStroke );
