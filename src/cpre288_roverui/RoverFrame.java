@@ -22,16 +22,16 @@ public class RoverFrame extends JFrame
 {
 	private static final long serialVersionUID = -586582539665675594L;
 	
-	private RoverStatusPanel status;
+	private RoverStatusPanel statusbar;
 	private RoverSweepPanel plotter;
 
 	public RoverFrame()
 	{
 		setSize( 1200, 800 );
-		status = new RoverStatusPanel();
+		statusbar = new RoverStatusPanel();
 		plotter = new RoverSweepPanel();
 
-		add( status );
+		add( statusbar );
 		add( plotter );
 		setVisible( true );
 	}
@@ -57,7 +57,7 @@ public class RoverFrame extends JFrame
 			@Override
 			public void run()
 			{
-				status.processStatusString( data );
+				statusbar.processStatusString( data );
 				repaint();
 			}
 			
