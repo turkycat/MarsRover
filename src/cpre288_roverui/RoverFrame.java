@@ -3,9 +3,11 @@ package cpre288_roverui;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.GridLayout;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.File;
@@ -14,11 +16,12 @@ import java.io.IOException;
 import java.io.PrintWriter;
 
 import javax.imageio.ImageIO;
+import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
-import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 
@@ -29,15 +32,29 @@ public class RoverFrame extends JFrame
 	
 	private RoverStatusPanel status;
 	private RoverSweepPanel plotter;
+	private RoverControlPanel control;
 
 	public RoverFrame()
 	{
-		setSize( 1200, 800 );
+		setSize( 1200, 900 );
+		
+		BorderLayout layout = new BorderLayout();
+		
 		status = new RoverStatusPanel();
 		plotter = new RoverSweepPanel();
+		control = new RoverControlPanel();
+		setLayout( layout );
+		
+		add( status, BorderLayout.PAGE_START );
+		add( plotter, BorderLayout.CENTER );
+		add( control, BorderLayout.PAGE_END );
 
-		add( status );
-		add( plotter );
+//		layout.addLayoutComponent( control, BorderLayout.LINE_START );
+//		layout.addLayoutComponent( status, BorderLayout.CENTER );
+//		layout.addLayoutComponent( plotter, BorderLayout.PAGE_END );
+//		add( control );
+//		add( status );
+//		add( plotter );
 		setVisible( true );
 	}
 	
@@ -97,7 +114,6 @@ public class RoverFrame extends JFrame
 	{
 		private static final long serialVersionUID = 2620111384139839386L;
 		
-		private ImageIcon upIcon;
 		private final ImageIcon indicators[];
 		private final int GREEN = 0;
 		private final int YELLOW = 1;
@@ -111,11 +127,9 @@ public class RoverFrame extends JFrame
 			setBackground( Color.WHITE );
 			
 			//initialize image icons
-			upIcon = null;
 			indicators = new ImageIcon[3];
 			try
 			{
-				upIcon = new ImageIcon( ImageIO.read( new File( "up2.png" ) ) );
 				indicators[GREEN] = new ImageIcon( ImageIO.read( new File( "green.png" ) ) );
 				indicators[YELLOW] = new ImageIcon( ImageIO.read( new File( "yellow.png" ) ) );
 				indicators[RED] = new ImageIcon( ImageIO.read( new File( "red.png" ) ) );
@@ -131,26 +145,6 @@ public class RoverFrame extends JFrame
 
 			//sets the border
 			setBorder( new EmptyBorder( 0, 10, 10, 10 ) );
-			
-
-			
-			//set up buttons
-			JPanel buttons = new JPanel();
-			//buttons.setBackground( Color.BLACK );
-			BorderLayout layout = new BorderLayout();
-			buttons.setLayout( layout );
-			
-			JLabel upLabel = new JLabel( upIcon );
-			upLabel.addMouseListener( new MouseClickListener( 'F' ) );
-			buttons.add( upLabel );
-			//layout.addLayoutComponent( upLabel, BorderLayout.PAGE_START );
-			
-			
-			//add the buttons layout to the current frame
-			add( buttons );
-			
-			
-			
 			
 
 			//initialize status indicators
@@ -244,35 +238,6 @@ public class RoverFrame extends JFrame
 				label.setIcon( indicators[status] );
 			}
 		}
-		
-		
-		private class MouseClickListener implements MouseListener
-		{
-			private char id;
-			
-			public MouseClickListener( char id )
-			{
-				this.id = id;
-			}
-			
-			@Override
-			public void mouseClicked(MouseEvent e) {
-				GUIMain.sendRequest( id );
-			}
-
-			@Override
-			public void mousePressed(MouseEvent e) {}
-
-			@Override
-			public void mouseReleased(MouseEvent e) {}
-
-			@Override
-			public void mouseEntered(MouseEvent e) {}
-
-			@Override
-			public void mouseExited(MouseEvent e) {}
-			
-		}
 	}
 
 	
@@ -291,8 +256,10 @@ public class RoverFrame extends JFrame
 		private final BasicStroke medStroke;
 		private final BasicStroke thinStroke;
 		private final Font font;
+//		private final int xOrigin = 600;
+//		private final int yOrigin = 700;
 		private final int xOrigin = 600;
-		private final int yOrigin = 700;
+		private final int yOrigin = 550;
 		private int[][] coords;
 		
 		//for debugging
@@ -437,10 +404,10 @@ public class RoverFrame extends JFrame
 
 			//			x,   y, width, height, startAngle, arcAngle
 			//draw the outer arc
-			g.drawArc( 100, 200, 1000, 1000, 0, 180 );
+			g.drawArc( 100, 50, 1000, 1000, 0, 180 );
 
 			//draw the inner arc
-			g.drawArc( 350, 450, 500, 500, 0, 180 );
+			g.drawArc( 350, 300, 500, 500, 0, 180 );
 
 			//used for testing purposes
 			/*
@@ -460,11 +427,11 @@ public class RoverFrame extends JFrame
 
 			//draw text
 			char[] characters = "50 cm".toCharArray();
-			g.drawChars( characters, 0, 5, 80, 720 );
-			g.drawChars( characters, 0, 5, 1080, 720 );
+			g.drawChars( characters, 0, 5, 80, 570 );
+			g.drawChars( characters, 0, 5, 1080, 570 );
 			characters = "25 cm".toCharArray();
-			g.drawChars( characters, 0, 5, 330, 720 );
-			g.drawChars( characters, 0, 5, 830, 720 );
+			g.drawChars( characters, 0, 5, 330, 570 );
+			g.drawChars( characters, 0, 5, 830, 570 );
 			
 			
 			//draw current coordinates
@@ -514,6 +481,121 @@ public class RoverFrame extends JFrame
 				this.x = x;
 				this.y = y;
 			}
+		}
+	}
+
+
+	/**
+	 * this panel provides the control abilities and text boxes for the Rover
+	 */
+	private class RoverControlPanel extends JPanel
+	{
+		public static final int ZERO = 0;
+		public static final int ONE = 1;
+		public static final int TWO = 2;
+		public static final int THREE = 3;
+		
+		
+		public RoverControlPanel()
+		{
+			setSize( 1200, 100 );
+			//setLocation( 0, 800 );
+			
+
+			ImageIcon[] directionalButtons = new ImageIcon[4];
+
+			try
+			{
+				directionalButtons[0] = new ImageIcon( ImageIO.read( new File( "left.png" ) ) );
+				directionalButtons[1] = new ImageIcon( ImageIO.read( new File( "forward.png" ) ) );
+				directionalButtons[2] = new ImageIcon( ImageIO.read( new File( "back.png" ) ) );
+				directionalButtons[3] = new ImageIcon( ImageIO.read( new File( "right.png" ) ) );
+			}
+			catch( IOException e )
+			{
+				//do nothing
+			}
+			
+
+			
+			//set up buttons
+			JPanel buttons = new JPanel();
+			//buttons.setBackground( Color.BLACK );
+			//BorderLayout layout = new BorderLayout();
+			//buttons.setLayout( layout );
+			
+			char[] instructionCodes = { 'L', 'F', 'B', 'R' };
+			for( int i = 0; i < 4; ++i )
+			{
+				JLabel label = new JLabel( directionalButtons[i] );
+				label.addMouseListener( new MouseClickListener( instructionCodes[i] ) );
+				buttons.add( label );
+			}	
+			
+			//add the buttons layout to the current frame
+			add( buttons );
+			
+			//add the filler spacer
+			JPanel spacer = new JPanel();
+			spacer.setSize( 500, 100 );
+			spacer.setPreferredSize( new Dimension( 200, 100 ) );
+			add( spacer );
+			
+			JPanel textFields = new JPanel();
+			GridLayout grid = new GridLayout( 2, 4 );
+			textFields.setLayout( grid );
+			String[] textFieldNames = { "Field One  ", "Field Two  ", "Field Three  ", "Field Four  " };
+			
+			for( int i = 0; i < 4; ++i )
+			{
+				JTextField title = new JTextField();
+				title.setFocusable( false );
+				title.setFont( new Font( "Serif", Font.BOLD, 26 ) );
+				title.setBorder( BorderFactory.createEmptyBorder() );
+				title.setText( textFieldNames[i] );
+				textFields.add( title );
+				
+				JTextField dynamic = new JTextField();
+				dynamic.setFocusable( false );
+				dynamic.setFont( new Font( "Serif", Font.BOLD, 26 ) );
+				dynamic.setBorder( BorderFactory.createEmptyBorder() );
+				dynamic.setText( "" + i );
+				textFields.add( dynamic );
+			}
+			add( textFields );
+
+			setVisible( true );
+		}
+		
+
+		
+		
+		private class MouseClickListener implements MouseListener
+		{
+			private char id;
+			
+			public MouseClickListener( char id )
+			{
+				this.id = id;
+			}
+			
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				GUIMain.sendRequest( id );
+			}
+
+			@Override
+			public void mousePressed(MouseEvent e) {}
+
+			@Override
+			public void mouseReleased(MouseEvent e) {}
+
+			@Override
+			public void mouseEntered(MouseEvent e) {}
+
+			@Override
+			public void mouseExited(MouseEvent e) {}
+			
 		}
 	}
 }
