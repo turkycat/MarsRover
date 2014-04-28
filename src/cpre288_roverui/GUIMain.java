@@ -13,6 +13,7 @@ public class GUIMain
 {
 	private static RoverFrame frame;
 	private static EventListenerThread eventThread;
+	private static SerialConnection serial;
 	
 	public static void main(String[] args)
 	{
@@ -48,7 +49,7 @@ public class GUIMain
 		
 		
 		//set up the serial connection and add the event thread as a listener
-		SerialConnection serial = new SerialConnection( "COM4", 57600 );
+		serial = new SerialConnection( "COM4", 57600 );
 		serial.init();
 		serial.addListener( eventThread );
 		
@@ -123,6 +124,15 @@ public class GUIMain
 	}
 	
 	
+	/**
+	 * invokes a send request to the serial connection
+	 */
+	public static void sendRequest( char request )
+	{
+		serial.sendData( request );
+	}
+	
+	
 	
 	private static class EventListenerThread extends Thread implements ISerialListener
 	{
@@ -153,12 +163,18 @@ public class GUIMain
 						String current = queue.pop();
 						if( current.charAt( 0 ) == 's' )
 						{
+							System.out.println( "sending status string" );
 							frame.onStatusString( current );
 							continue;
 						}
+						else if( current.charAt( 0 ) == 'd' )
+						{
+							//System.out.println( "sending data string" );
+							frame.onDataString( current );
+						}
 						else
 						{
-							frame.onDataString( current );
+							System.out.println( "invalid string" );
 						}
 					}
 				}

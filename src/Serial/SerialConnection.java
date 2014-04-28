@@ -70,7 +70,7 @@ public class SerialConnection implements SerialPortEventListener
 	 * attempts to initialize the serial connection by connecting to the
 	 * specified port name and given parameters
 	 */
-	public void init()
+	public synchronized void init()
 	{
 		CommPortIdentifier selectedPort = null;
 		Enumeration allPorts = CommPortIdentifier.getPortIdentifiers();
@@ -84,6 +84,7 @@ public class SerialConnection implements SerialPortEventListener
 				selectedPort = current;
 				break;
 			}
+			System.out.println( "Port " + current.getName() + " found. Does not match selected port: " + portName + ". Continuing..." );
 		}
 
 		//if unable to find the com port
@@ -108,6 +109,7 @@ public class SerialConnection implements SerialPortEventListener
 			// add event listeners
 			serialPort.addEventListener( this );
 			serialPort.notifyOnDataAvailable( true );
+			System.out.println( "HALLELELOOOIA Successfully connected to " + portName );
 		}
 		catch( Exception e )
 		{
@@ -136,6 +138,8 @@ public class SerialConnection implements SerialPortEventListener
 		listeners.add( listener );
 	}
 
+	private boolean lowerRecieved = false;
+	private char combiner;
 	/**
 	 * Handle an event on the serial port. Read the data and print it.
 	 */
@@ -145,20 +149,42 @@ public class SerialConnection implements SerialPortEventListener
 		{
 			try
 			{
-				char inputChar = (char) input.read();
-				if( inputChar == '\n' )
-				//if( inputChar == 0 )
+				int val = input.read();
+				char inputChar = (char) ( 0xff & val );
+				
+				if ( lowerRecieved )
 				{
-					System.out.println( parsedString );
+					combiner |= ( inputChar & 0x0f ) << 4;
+
+					if ( parsedString.equals( "" ) )
+					{
+						if ( combiner == 'd' || combiner == 's' )
+						{
+							parsedString = parsedString + combiner;
+						}
+					}
+					else
+					{
+						parsedString = parsedString + combiner;
+					}
+					
+					lowerRecieved = false;
+				}
+				else
+				{
+					combiner = 0;
+					combiner |= inputChar & 0x0f;
+					lowerRecieved = true;
+				}
+
+				if( parsedString.length() == 12 )
+				{
+					//System.out.println( parsedString );
 					for( ISerialListener listener : listeners )
 					{
 						listener.onStringReceived( parsedString );
 					}
 					parsedString = "";
-				}
-				else
-				{
-					parsedString = parsedString + inputChar;
 				}
 			}
 			catch( Exception e )
@@ -166,9 +192,10 @@ public class SerialConnection implements SerialPortEventListener
 				System.err.println( e.toString() );
 			}
 		}
-		// Ignore all the other eventTypes, but you should consider the other ones.
+		// Ignore all the other event types
 	}
-
+	
+	
 	/**
 	 * called when data needs to be sent across the serial connection
 	 */
@@ -180,6 +207,23 @@ public class SerialConnection implements SerialPortEventListener
 		try
 		{
 			output.write( data.getBytes() );
+			output.flush();
+		}
+		catch( IOException e )
+		{
+			e.printStackTrace();
+		}
+	}
+	
+	
+	/**
+	 * called when data needs to be sent across the serial connection
+	 */
+	public synchronized void sendData( char ch )
+	{
+		try
+		{
+			output.write( ch );
 			output.flush();
 		}
 		catch( IOException e )
