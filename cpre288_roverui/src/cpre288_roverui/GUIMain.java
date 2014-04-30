@@ -130,6 +130,7 @@ public class GUIMain
 	public static void sendRequest( char request )
 	{
 		serial.sendData( request );
+<<<<<<< HEAD:cpre288_roverui/src/cpre288_roverui/GUIMain.java
 		System.out.println( "data sent: " + request );
 	}
 	
@@ -141,6 +142,8 @@ public class GUIMain
 	public static void clearSerialBuffer()
 	{
 		serial.clearBuffer();
+=======
+>>>>>>> d62c6b070d27194b7d1b7c971050e85fd9eb3a29:src/cpre288_roverui/GUIMain.java
 	}
 	
 	
@@ -180,7 +183,11 @@ public class GUIMain
 						}
 						else if( current.charAt( 0 ) == 'd' )
 						{
+<<<<<<< HEAD:cpre288_roverui/src/cpre288_roverui/GUIMain.java
 							System.out.println( "sending data string" );
+=======
+							//System.out.println( "sending data string" );
+>>>>>>> d62c6b070d27194b7d1b7c971050e85fd9eb3a29:src/cpre288_roverui/GUIMain.java
 							frame.onDataString( current );
 						}
 						else

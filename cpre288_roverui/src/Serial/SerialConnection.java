@@ -149,8 +149,11 @@ public class SerialConnection implements SerialPortEventListener
 
 	private boolean lowerRecieved = false;
 	private char combiner;
+<<<<<<< HEAD:cpre288_roverui/src/Serial/SerialConnection.java
 	private boolean data = false;
 
+=======
+>>>>>>> d62c6b070d27194b7d1b7c971050e85fd9eb3a29:src/Serial/SerialConnection.java
 	/**
 	 * Handle an event on the serial port. Read the data and print it.
 	 */
@@ -160,6 +163,7 @@ public class SerialConnection implements SerialPortEventListener
 		{
 			try
 			{
+<<<<<<< HEAD:cpre288_roverui/src/Serial/SerialConnection.java
 				while( input.ready() )
 				{
 					int val = input.read();
@@ -209,6 +213,44 @@ public class SerialConnection implements SerialPortEventListener
 						}
 						parsedString = "";
 					}
+=======
+				int val = input.read();
+				char inputChar = (char) ( 0xff & val );
+				
+				if ( lowerRecieved )
+				{
+					combiner |= ( inputChar & 0x0f ) << 4;
+
+					if ( parsedString.equals( "" ) )
+					{
+						if ( combiner == 'd' || combiner == 's' )
+						{
+							parsedString = parsedString + combiner;
+						}
+					}
+					else
+					{
+						parsedString = parsedString + combiner;
+					}
+					
+					lowerRecieved = false;
+				}
+				else
+				{
+					combiner = 0;
+					combiner |= inputChar & 0x0f;
+					lowerRecieved = true;
+				}
+
+				if( parsedString.length() == 12 )
+				{
+					//System.out.println( parsedString );
+					for( ISerialListener listener : listeners )
+					{
+						listener.onStringReceived( parsedString );
+					}
+					parsedString = "";
+>>>>>>> d62c6b070d27194b7d1b7c971050e85fd9eb3a29:src/Serial/SerialConnection.java
 				}
 			}
 			catch( Exception e )
@@ -218,7 +260,8 @@ public class SerialConnection implements SerialPortEventListener
 		}
 		// Ignore all the other event types
 	}
-
+	
+	
 	/**
 	 * called when data needs to be sent across the serial connection
 	 */
@@ -244,6 +287,23 @@ public class SerialConnection implements SerialPortEventListener
 	public synchronized void sendData( char ch )
 	{
 		System.out.println( "serial received request: " + ch );
+		try
+		{
+			output.write( ch );
+			output.flush();
+		}
+		catch( IOException e )
+		{
+			e.printStackTrace();
+		}
+	}
+	
+	
+	/**
+	 * called when data needs to be sent across the serial connection
+	 */
+	public synchronized void sendData( char ch )
+	{
 		try
 		{
 			output.write( ch );
